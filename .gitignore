@@ -35,3 +35,6 @@
 .project
 .cproject
 
+# object and exe directories
+/obj/*
+/bin/*
