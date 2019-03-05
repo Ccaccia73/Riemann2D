@@ -1,0 +1,4 @@
+PROGRAM riemann
+
+    IMPLICIT NONE 
+END PROGRAM riemann
