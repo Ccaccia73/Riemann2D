@@ -1,7 +1,13 @@
 PROGRAM riemann
+
+    USE mod_thermodynamics
+
+    USE mod_write_vtk
+
     IMPLICIT NONE
 
     !INTEGER :: i !, j ,k                           ! general iteration variables
+    INTEGER :: istat                                !
     LOGICAL :: test                                 ! general test variable
     CHARACTER(len=32) :: arg                        ! command line argument
     INTEGER :: count                                ! number of CL arguments
@@ -9,12 +15,15 @@ PROGRAM riemann
     LOGICAL, DIMENSION(n_params) :: is_parsed = .FALSE.    ! check if every param has been parsed
 
     ! simulation parameters to be parsed in the config file
-    REAL(kind=8) :: T, dt                           ! total time and delta time between writes
+    REAL(kind=8) :: t_final, dt                     ! total time and delta time between writes
     REAL(kind=8), DIMENSION(4) :: p1, p2, p3, p4    ! initial condition in quadrants
-    INTEGER :: n                                    ! number of cells per side: total num (n x n)
+    INTEGER :: n,hn                                 ! number of cells per side: total num (n x n)
     INTEGER(kind=4) :: wr                           ! write data to vtk file
     CHARACTER(len=24) :: dirname, outname           ! folder and file where to write results
 
+    ! simulation variables
+    REAL(kind=8), ALLOCATABLE, DIMENSION(:,:,:) :: w0   ! matrix containing all variables
+    REAL(kind=8) :: Dx, Dy                              ! cell size
 
 
     ! start parsing input file
@@ -31,6 +40,7 @@ PROGRAM riemann
     WRITE (*,*) CHAR(10),'Using configuration file: ',TRIM(arg), CHAR(10)
     CALL parse_file(arg)
 
+    ! test if all simulation required parameters have been correctly parsed
     IF (ALL(is_parsed)) THEN
         PRINT *, CHAR(10),'All arguments have been parsed',CHAR(10)
     ELSE
@@ -38,15 +48,79 @@ PROGRAM riemann
         STOP
     END IF
 
-    ! test if folder exists and create
-    INQUIRE(FILE='./'//TRIM(dirname)//'/.', EXIST=test)
+    ! test if folder for results exists and create if necessary
+    IF (wr == 1) THEN
+        INQUIRE(FILE='./'//TRIM(dirname)//'/.', EXIST=test)
 
-    IF (test) THEN
-        PRINT *, CHAR(10)//'Directory '//TRIM(dirname)//' exists...'//CHAR(10)
-    ELSE
-        PRINT *, CHAR(10)//'Directory '//TRIM(dirname)//' does not exist...'//CHAR(10)
-        CALL execute_command_line('mkdir -p '//TRIM(dirname))
+        IF (test) THEN
+            PRINT *, CHAR(10)//'Directory '//TRIM(dirname)//' exists...'//CHAR(10)
+        ELSE
+            PRINT *, CHAR(10)//'Directory '//TRIM(dirname)//' does not exist. Creating...'//CHAR(10)
+            CALL execute_command_line('mkdir -p '//TRIM(dirname))
+        END IF
     END IF
+
+
+    ! we want to round up to next even integer (if n is odd)
+    IF (n > (n/2)*2 ) THEN
+        n = n+1
+    END IF
+    hn = n/2
+
+    ! compute cell dimension
+    Dx = 1.0 / REAL(n)
+    Dy = Dx
+
+    ! allocate memory for solution
+    ALLOCATE (w0(n,n,nvar),STAT=istat)
+    IF (istat /= 0) THEN
+        PRINT*, "Failed to allocate variables"
+        PRINT*, "Error code: ", istat
+        PRINT*, "Exiting..."
+        STOP
+    END IF
+
+    ! Intialize known variables
+    ! 1
+    w0(hn+1:n,hn+1:n,i_rho) = p1(i_rho)
+    w0(hn+1:n,hn+1:n,i_u)   = p1(i_u)
+    w0(hn+1:n,hn+1:n,i_v)   = p1(i_v)
+    w0(hn+1:n,hn+1:n,i_P)   = p1(i_P)
+    ! 2
+    w0(hn+1:n,1:hn,i_rho) = p2(i_rho)
+    w0(hn+1:n,1:hn,i_u)   = p2(i_u)
+    w0(hn+1:n,1:hn,i_v)   = p2(i_v)
+    w0(hn+1:n,1:hn,i_P)   = p2(i_P)
+    ! 3
+    w0(1:hn,1:hn,i_rho) = p3(i_rho)
+    w0(1:hn,1:hn,i_u)   = p3(i_u)
+    w0(1:hn,1:hn,i_v)   = p3(i_v)
+    w0(1:hn,1:hn,i_P)   = p3(i_P)
+    ! 4
+    w0(1:hn,hn+1:n,i_rho) = p4(i_rho)
+    w0(1:hn,hn+1:n,i_u)   = p4(i_u)
+    w0(1:hn,hn+1:n,i_v)   = p4(i_v)
+    w0(1:hn,hn+1:n,i_P)   = p4(i_P)
+
+    ! write conservative variables
+    w0(:,:,i_rho_u) = w0(:,:,i_rho)*w0(:,:,i_u)
+    w0(:,:,i_rho_v) = w0(:,:,i_rho)*w0(:,:,i_v)
+
+    ! w0(:,:,i_e) = specific_energy(w0(:,:,i_P),w0(:,:,i_rho))
+
+    ! write first output file
+    IF (wr == 1) THEN
+        CALL write_vtk(w0,dirname,outname,0,n)
+    END IF
+
+
+
+    ! start computation
+
+
+    DEALLOCATE(w0)
+
+    PRINT*,"End of computation!"
 
 
 CONTAINS
@@ -82,9 +156,9 @@ CONTAINS
 
                 SELECT CASE (label)
                     CASE ('T')
-                        READ(buffer, *, iostat=ios) T
+                        READ(buffer, *, iostat=ios) t_final
                         IF (ios == 0) THEN
-                            WRITE(*,101) 'Read T:', T
+                            WRITE(*,101) 'Read T:', t_final
                             is_parsed(1) = .TRUE.
                         ELSE
                             PRINT *, 'Error parsing T'
