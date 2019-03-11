@@ -87,20 +87,20 @@ PROGRAM riemann
     w0(hn+1:n,hn+1:n,i_v)   = p1(i_v)
     w0(hn+1:n,hn+1:n,i_P)   = p1(i_P)
     ! 2
-    w0(hn+1:n,1:hn,i_rho) = p2(i_rho)
-    w0(hn+1:n,1:hn,i_u)   = p2(i_u)
-    w0(hn+1:n,1:hn,i_v)   = p2(i_v)
-    w0(hn+1:n,1:hn,i_P)   = p2(i_P)
+    w0(1:hn,hn+1:n,i_rho) = p2(i_rho)
+    w0(1:hn,hn+1:n,i_u)   = p2(i_u)
+    w0(1:hn,hn+1:n,i_v)   = p2(i_v)
+    w0(1:hn,hn+1:n,i_P)   = p2(i_P)
     ! 3
     w0(1:hn,1:hn,i_rho) = p3(i_rho)
     w0(1:hn,1:hn,i_u)   = p3(i_u)
     w0(1:hn,1:hn,i_v)   = p3(i_v)
     w0(1:hn,1:hn,i_P)   = p3(i_P)
     ! 4
-    w0(1:hn,hn+1:n,i_rho) = p4(i_rho)
-    w0(1:hn,hn+1:n,i_u)   = p4(i_u)
-    w0(1:hn,hn+1:n,i_v)   = p4(i_v)
-    w0(1:hn,hn+1:n,i_P)   = p4(i_P)
+    w0(hn+1:n,1:hn,i_rho) = p4(i_rho)
+    w0(hn+1:n,1:hn,i_u)   = p4(i_u)
+    w0(hn+1:n,1:hn,i_v)   = p4(i_v)
+    w0(hn+1:n,1:hn,i_P)   = p4(i_P)
 
     ! write conservative variables
     w0(:,:,i_rho_u) = w0(:,:,i_rho)*w0(:,:,i_u)

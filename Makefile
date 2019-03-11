@@ -1,10 +1,11 @@
 # Compiler/Linker settings
 FC = gfortran
 # FLAGS =  -O3 -g -fno-automatic  -fbounds-check  -ffpe trap=invalid,zero,overflow  -ggdb3
-FLFLAGS = -g -L../VTKFortran/shared -lvtkfortran 
+FLFLAGS = ../VTKFortran/static/libvtkfortran.a
 FCFLAGS = -g -Wall -Wextra -Wconversion -Og -pedantic -fcheck=bounds -fmax-errors=5
 
-IMOD_LIB = -I../VTKFortran/shared/mod
+IMOD_LIB = -I../VTKFortran/static/mod
+IOBJ_LIB = -I../VTKFortran/static/obj
 
 # project directories
 SRC_DIR = ./src
@@ -29,12 +30,12 @@ all : $(BIN_DIR)/$(PROGRAM)
 
 # Compiler steps for all objects
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.f90
-	$(FC) $(FCFLAGS) -J$(OBJ_DIR) $(IMOD_LIB) -c -o $@ $<
+	$(FC) $(FCFLAGS) -J$(OBJ_DIR) $(IMOD_LIB) $(IOBJ_LIB) -c -o $@ $<
 
 #$@ -c 
 # Linker
 $(BIN_DIR)/$(PROGRAM) : $(OBJ_FILES)
-	$(FC) $(FLFLAGS) -I$(OBJ_DIR) $(IMOD_LIB) -o $@ $^
+	$(FC)  -o $@ $^ -I$(OBJ_DIR) $(IMOD_LIB) $(IOBJ_LIB) $(FLFLAGS)
 
 # If something doesn't work right, have a 'make debug' to 
 # show what each variable contains.
