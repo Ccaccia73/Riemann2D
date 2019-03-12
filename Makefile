@@ -62,4 +62,5 @@ clean:
 $(PRG_OBJ) : $(MOD_OBJS)
 
 # Module dependencies (manual)
-$(OBJ_DIR)/mod_write_vtk.o: $(OBJ_DIR)/mod_thermodynamics.o
+$(OBJ_DIR)/mod_thermodynamics.o: $(OBJ_DIR)/mod_constants.o
+$(OBJ_DIR)/mod_write_vtk.o: $(OBJ_DIR)/mod_thermodynamics.o $(OBJ_DIR)/mod_constants.o

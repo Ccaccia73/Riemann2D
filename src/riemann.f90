@@ -1,12 +1,13 @@
 PROGRAM riemann
 
+    USE mod_constants
     USE mod_thermodynamics
 
     USE mod_write_vtk
 
     IMPLICIT NONE
 
-    !INTEGER :: i !, j ,k                           ! general iteration variables
+    INTEGER :: i , j ,k                           ! general iteration variables
     INTEGER :: istat                                !
     LOGICAL :: test                                 ! general test variable
     CHARACTER(len=32) :: arg                        ! command line argument
@@ -15,15 +16,14 @@ PROGRAM riemann
     LOGICAL, DIMENSION(n_params) :: is_parsed = .FALSE.    ! check if every param has been parsed
 
     ! simulation parameters to be parsed in the config file
-    REAL(kind=8) :: t_final, dt                     ! total time and delta time between writes
-    REAL(kind=8), DIMENSION(4) :: p1, p2, p3, p4    ! initial condition in quadrants
-    INTEGER :: n,hn                                 ! number of cells per side: total num (n x n)
-    INTEGER(kind=4) :: wr                           ! write data to vtk file
+    REAL(dp_kind) :: t_final, dt                     ! total time and delta time between writes
+    REAL(dp_kind), DIMENSION(4) :: p1, p2, p3, p4    ! initial condition in quadrants
+
+    INTEGER(sh_kind) :: wr                           ! write data to vtk file
     CHARACTER(len=24) :: dirname, outname           ! folder and file where to write results
 
     ! simulation variables
-    REAL(kind=8), ALLOCATABLE, DIMENSION(:,:,:) :: w0   ! matrix containing all variables
-    REAL(kind=8) :: Dx, Dy                              ! cell size
+    REAL(dp_kind), ALLOCATABLE, DIMENSION(:,:,:) :: w0   ! matrix containing all variables
 
 
     ! start parsing input file
@@ -62,17 +62,17 @@ PROGRAM riemann
 
 
     ! we want to round up to next even integer (if n is odd)
-    IF (n > (n/2)*2 ) THEN
-        n = n+1
+    IF (num_cells > (num_cells/2)*2 ) THEN
+        num_cells = num_cells+1
     END IF
-    hn = n/2
+    half_cells = num_cells/2
 
     ! compute cell dimension
-    Dx = 1.0 / REAL(n)
+    Dx = 1.0 / REAL(num_cells)
     Dy = Dx
 
     ! allocate memory for solution
-    ALLOCATE (w0(n,n,nvar),STAT=istat)
+    ALLOCATE (w0(num_cells,num_cells,nvar),STAT=istat)
     IF (istat /= 0) THEN
         PRINT*, "Failed to allocate variables"
         PRINT*, "Error code: ", istat
@@ -80,27 +80,43 @@ PROGRAM riemann
         STOP
     END IF
 
+    !allocate memory for point coordinatee
+    ALLOCATE (x(0:num_cells,0:num_cells,0:0),STAT=istat)
+    ALLOCATE (y(0:num_cells,0:num_cells,0:0),STAT=istat)
+    ALLOCATE (z(0:num_cells,0:num_cells,0:0),STAT=istat)
+
+    DO k=0, 0
+        DO j=0, num_cells
+            DO i=0, num_cells
+                x(i, j, k) = i*Dx
+                y(i, j, k) = j*Dx
+            END DO
+        END DO
+    END DO
+
+    z = 0.0
+
     ! Intialize known variables
     ! 1
-    w0(hn+1:n,hn+1:n,i_rho) = p1(i_rho)
-    w0(hn+1:n,hn+1:n,i_u)   = p1(i_u)
-    w0(hn+1:n,hn+1:n,i_v)   = p1(i_v)
-    w0(hn+1:n,hn+1:n,i_P)   = p1(i_P)
+    w0(half_cells+1:num_cells,half_cells+1:num_cells,i_rho) = p1(i_rho)
+    w0(half_cells+1:num_cells,half_cells+1:num_cells,i_u)   = p1(i_u)
+    w0(half_cells+1:num_cells,half_cells+1:num_cells,i_v)   = p1(i_v)
+    w0(half_cells+1:num_cells,half_cells+1:num_cells,i_P)   = p1(i_P)
     ! 2
-    w0(1:hn,hn+1:n,i_rho) = p2(i_rho)
-    w0(1:hn,hn+1:n,i_u)   = p2(i_u)
-    w0(1:hn,hn+1:n,i_v)   = p2(i_v)
-    w0(1:hn,hn+1:n,i_P)   = p2(i_P)
+    w0(1:half_cells,half_cells+1:num_cells,i_rho) = p2(i_rho)
+    w0(1:half_cells,half_cells+1:num_cells,i_u)   = p2(i_u)
+    w0(1:half_cells,half_cells+1:num_cells,i_v)   = p2(i_v)
+    w0(1:half_cells,half_cells+1:num_cells,i_P)   = p2(i_P)
     ! 3
-    w0(1:hn,1:hn,i_rho) = p3(i_rho)
-    w0(1:hn,1:hn,i_u)   = p3(i_u)
-    w0(1:hn,1:hn,i_v)   = p3(i_v)
-    w0(1:hn,1:hn,i_P)   = p3(i_P)
+    w0(1:half_cells,1:half_cells,i_rho) = p3(i_rho)
+    w0(1:half_cells,1:half_cells,i_u)   = p3(i_u)
+    w0(1:half_cells,1:half_cells,i_v)   = p3(i_v)
+    w0(1:half_cells,1:half_cells,i_P)   = p3(i_P)
     ! 4
-    w0(hn+1:n,1:hn,i_rho) = p4(i_rho)
-    w0(hn+1:n,1:hn,i_u)   = p4(i_u)
-    w0(hn+1:n,1:hn,i_v)   = p4(i_v)
-    w0(hn+1:n,1:hn,i_P)   = p4(i_P)
+    w0(half_cells+1:num_cells,1:half_cells,i_rho) = p4(i_rho)
+    w0(half_cells+1:num_cells,1:half_cells,i_u)   = p4(i_u)
+    w0(half_cells+1:num_cells,1:half_cells,i_v)   = p4(i_v)
+    w0(half_cells+1:num_cells,1:half_cells,i_P)   = p4(i_P)
 
     ! write conservative variables
     w0(:,:,i_rho_u) = w0(:,:,i_rho)*w0(:,:,i_u)
@@ -110,7 +126,7 @@ PROGRAM riemann
 
     ! write first output file
     IF (wr == 1) THEN
-        CALL write_vtk(w0,dirname,outname,0,n)
+        CALL write_vtk(w0,dirname,outname,0)
     END IF
 
 
@@ -174,12 +190,12 @@ CONTAINS
                         END IF
 
                     CASE ('n')
-                        READ(buffer, *, iostat=ios) n
+                        READ(buffer, *, iostat=ios) num_cells
                         IF (ios == 0) THEN
-                            WRITE(*,102) 'Read n:', n
+                            WRITE(*,102) 'Read num cells:', num_cells
                             is_parsed(3) = .TRUE.
                         ELSE
-                            PRINT *, 'Error parsing n'
+                            PRINT *, 'Error parsing num cells'
                         END IF
 
                     CASE ('p1')

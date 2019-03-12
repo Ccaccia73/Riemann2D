@@ -1,24 +1,8 @@
 MODULE mod_thermodynamics
+
+    USE mod_constants
+
     IMPLICIT NONE
-    ! ratio of specific heats
-    REAL(kind=8), PARAMETER :: gamma = 1.4d00
-
-
-
-    ! index of variables in the solution matrix
-    INTEGER(kind=4), PARAMETER :: i_rho   =  1
-    INTEGER(kind=4), PARAMETER :: i_u     =  2
-    INTEGER(kind=4), PARAMETER :: i_v     =  3
-    INTEGER(kind=4), PARAMETER :: i_P     =  4
-    INTEGER(kind=4), PARAMETER :: i_rho_u =  5  ! x momentum
-    INTEGER(kind=4), PARAMETER :: i_rho_v =  6  ! y momentum
-    INTEGER(kind=4), PARAMETER :: i_eT    =  7  ! total energy XXX ???
-    INTEGER(kind=4), PARAMETER :: i_T     =  8  ! ?
-    INTEGER(kind=4), PARAMETER :: i_schl  =  9
-    !    INTEGER(kind=4), PARAMETER :: i_e    = 1
-
-    ! number of variables
-    INTEGER(kind=4), PARAMETER :: nvar      = 9
 
 CONTAINS
 
@@ -27,8 +11,8 @@ CONTAINS
 
         IMPLICIT NONE
 
-        REAL(KIND=8), INTENT(IN) :: P, rho
-        REAL(KIND=8) :: e
+        REAL(dp_kind), INTENT(IN) :: P, rho
+        REAL(dp_kind) :: e
 
         e = P / ((gamma - 1) * rho)
 
@@ -38,8 +22,8 @@ CONTAINS
 
         IMPLICIT NONE
 
-        REAL(KIND=8), INTENT(IN)  :: e, rho
-        REAL(KIND=8) :: P
+        REAL(dp_kind), INTENT(IN)  :: e, rho
+        REAL(dp_kind) :: P
 
         P = (gamma - 1) * rho * e
 

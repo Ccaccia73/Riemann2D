@@ -1,5 +1,6 @@
 MODULE mod_write_vtk
 
+    USE mod_constants
     USE mod_thermodynamics
     USE vtk_fortran, only : vtk_file
 
@@ -7,36 +8,24 @@ MODULE mod_write_vtk
 
 
 CONTAINS
-    SUBROUTINE write_vtk(act_w, dirname, prefix, step, n)
+    SUBROUTINE write_vtk(act_w, dirname, prefix, step)
 
         IMPLICIT NONE
-        REAL(kind=8),DIMENSION(:,:,:),INTENT(IN) :: act_w
+        REAL(dp_kind),DIMENSION(:,:,:),INTENT(IN) :: act_w
         INTEGER, INTENT(IN) :: step
-        INTEGER, INTENT(IN) :: n
         CHARACTER(len=*), INTENT(IN) :: dirname, prefix
 
-        REAL(kind=8) :: Dx
-        REAL(kind=8),DIMENSION(0:n,0:n,0:0) :: x,y,z
         CHARACTER(len=48) :: filename
         CHARACTER(len=4) :: nstring
 
         type(vtk_file) :: a_vtk_file                        ! A VTK file.
 
         !        INTEGER, PARAMETER :: u = 81
-        INTEGER :: rstat, i,j,k
+        INTEGER :: rstat !, i,j,k
 
-        Dx = 1./REAL(n)
+        !Dx = 1./REAL(n)
 
-        DO k=0, 0
-        DO j=0, n
-            DO i=0, n
-                x(i, j, k) = i*Dx
-                y(i, j, k) = j*Dx
-            END DO
-        END DO
-        END DO
 
-        z = 0.0
 
         WRITE(nstring,'(I4.4)') step
 
@@ -44,11 +33,13 @@ CONTAINS
 
 
         rstat = a_vtk_file%initialize(format='binary', filename=filename, mesh_topology='StructuredGrid', &
-                                      nx1=0, nx2=n, ny1=0, ny2=n, nz1=0, nz2=0)
-        rstat = a_vtk_file%xml_writer%write_piece(nx1=0, nx2=n, ny1=0, ny2=n, nz1=0, nz2=0)
-        rstat = a_vtk_file%xml_writer%write_geo(n=(n+1)*(n+1), x=x, y=y, z=z)
+                                      nx1=0, nx2=num_cells, ny1=0, ny2=num_cells, nz1=0, nz2=0)
+        rstat = a_vtk_file%xml_writer%write_piece(nx1=0, nx2=num_cells, ny1=0, ny2=num_cells, nz1=0, nz2=0)
+        rstat = a_vtk_file%xml_writer%write_geo(n=(num_cells+1)*(num_cells+1), x=x, y=y, z=z)
+
         rstat = a_vtk_file%xml_writer%write_dataarray(location='cell', action='open')
         rstat = a_vtk_file%xml_writer%write_dataarray(data_name='rho', x=act_w(:,:,i_rho), one_component=.true.)
+        rstat = a_vtk_file%xml_writer%write_dataarray(data_name='P', x=act_w(:,:,i_P), one_component=.true.)
         rstat = a_vtk_file%xml_writer%write_dataarray(location='cell', action='close')
         rstat = a_vtk_file%xml_writer%write_piece()
         rstat = a_vtk_file%finalize()
