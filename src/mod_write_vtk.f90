@@ -38,8 +38,22 @@ CONTAINS
         rstat = a_vtk_file%xml_writer%write_geo(n=(num_cells+1)*(num_cells+1), x=x, y=y, z=z)
 
         rstat = a_vtk_file%xml_writer%write_dataarray(location='cell', action='open')
+
+        ! rho
         rstat = a_vtk_file%xml_writer%write_dataarray(data_name='rho', x=act_w(:,:,i_rho), one_component=.true.)
+        ! P
         rstat = a_vtk_file%xml_writer%write_dataarray(data_name='P', x=act_w(:,:,i_P), one_component=.true.)
+        ! velocity vector
+        rstat = a_vtk_file%xml_writer%write_dataarray(data_name='v', &
+                                x=reshape(act_w(:,:,i_u),(/num_cells*num_cells/) ), &
+                                y=reshape(act_w(:,:,i_v),(/num_cells*num_cells/) ), &
+                                z=0.0*reshape(act_w(:,:,i_u),(/num_cells*num_cells/) ) )
+        ! x momentum
+        ! y momentum
+        ! total energy
+        ! Temperature ? (internal energy?)
+        ! pseudo schlieren
+
         rstat = a_vtk_file%xml_writer%write_dataarray(location='cell', action='close')
         rstat = a_vtk_file%xml_writer%write_piece()
         rstat = a_vtk_file%finalize()
