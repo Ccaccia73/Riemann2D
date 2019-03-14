@@ -49,10 +49,15 @@ CONTAINS
                                 y=reshape(act_w(:,:,i_v),(/num_cells*num_cells/) ), &
                                 z=0.0*reshape(act_w(:,:,i_u),(/num_cells*num_cells/) ) )
         ! x momentum
+        rstat = a_vtk_file%xml_writer%write_dataarray(data_name='mx', x=act_w(:,:,i_mx), one_component=.true.)
         ! y momentum
+        rstat = a_vtk_file%xml_writer%write_dataarray(data_name='my', x=act_w(:,:,i_my), one_component=.true.)
         ! total energy
-        ! Temperature ? (internal energy?)
+        rstat = a_vtk_file%xml_writer%write_dataarray(data_name='tot energy', x=act_w(:,:,i_eT), one_component=.true.)
+        ! internal energy
+        rstat = a_vtk_file%xml_writer%write_dataarray(data_name='int energy', x=act_w(:,:,i_e), one_component=.true.)
         ! pseudo schlieren
+        rstat = a_vtk_file%xml_writer%write_dataarray(data_name='schlieren', x=act_w(:,:,i_schl), one_component=.true.)
 
         rstat = a_vtk_file%xml_writer%write_dataarray(location='cell', action='close')
         rstat = a_vtk_file%xml_writer%write_piece()

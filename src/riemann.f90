@@ -119,19 +119,19 @@ PROGRAM riemann
     w0(half_cells+1:num_cells,1:half_cells,i_P)   = p4(i_P)
 
     ! write conservative variables
-    w0(:,:,i_rho_u) = w0(:,:,i_rho)*w0(:,:,i_u)
-    w0(:,:,i_rho_v) = w0(:,:,i_rho)*w0(:,:,i_v)
+    CALL conservatives(w0)
 
-    ! w0(:,:,i_e) = specific_energy(w0(:,:,i_P),w0(:,:,i_rho))
+    ! compute pseudo-Schlieren of rho
+    CALL pseudoschlieren(w0)
 
     ! write first output file
     IF (wr == 1) THEN
         CALL write_vtk(w0,dirname,outname,0)
     END IF
 
-
-
     ! start computation
+
+
 
 
     DEALLOCATE(w0)

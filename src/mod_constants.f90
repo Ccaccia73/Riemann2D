@@ -18,10 +18,10 @@ MODULE mod_constants
     INTEGER(sh_kind), PARAMETER :: i_u     =  2
     INTEGER(sh_kind), PARAMETER :: i_v     =  3
     INTEGER(sh_kind), PARAMETER :: i_P     =  4
-    INTEGER(sh_kind), PARAMETER :: i_rho_u =  5  ! x momentum
-    INTEGER(sh_kind), PARAMETER :: i_rho_v =  6  ! y momentum
-    INTEGER(sh_kind), PARAMETER :: i_eT    =  7  ! total energy XXX ???
-    INTEGER(sh_kind), PARAMETER :: i_T     =  8  ! ?
+    INTEGER(sh_kind), PARAMETER :: i_mx    =  5  ! x momentum
+    INTEGER(sh_kind), PARAMETER :: i_my    =  6  ! y momentum
+    INTEGER(sh_kind), PARAMETER :: i_eT    =  7  ! total energy
+    INTEGER(sh_kind), PARAMETER :: i_e     =  8  ! internal energy
     INTEGER(sh_kind), PARAMETER :: i_schl  =  9
     !    INTEGER(kind=4), PARAMETER :: i_e    = 1
 
