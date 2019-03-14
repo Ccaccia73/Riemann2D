@@ -25,6 +25,14 @@ PROGRAM riemann
     ! simulation variables
     REAL(dp_kind), ALLOCATABLE, DIMENSION(:,:,:) :: w0   ! matrix containing all variables
 
+    ! time related variables
+    REAL(dp_kind) :: t_curr                         ! current time
+    REAL(dp_kind) :: dt_cfl                         ! delta time given by CFL condition
+    REAL(dp_kind) :: act_dt                         ! actual delta time
+    REAL(dp_kind) :: t2next_w                       ! time to next write
+    REAL cpu_time_begin, cpu_time_end               ! time elapsed in computations
+    LOGICAL :: writestep                            ! write solution file at current step
+    INTEGER :: i_step = 0                           ! count step
 
     ! start parsing input file
     count = command_argument_count()
@@ -126,17 +134,61 @@ PROGRAM riemann
 
     ! write first output file
     IF (wr == 1) THEN
-        CALL write_vtk(w0,dirname,outname,0)
+        CALL write_vtk(w0,dirname,outname,i_step)
     END IF
 
     ! start computation
+    t_curr = 0.0d0
+    t2next_w = dt
+    writestep = .FALSE.
+
+    DO WHILE (t_curr <= t_final)
+
+        ! simulate CFL computation
+        !! TODO
+        CALL RANDOM_NUMBER(dt_cfl)
+        dt_cfl = dt_cfl *2.0d-2
+
+        IF (dt_cfl < t2next_w) THEN
+            ! delta time from CFL smaller than time to next write
+            writestep = .FALSE.
+            act_dt = dt_cfl
+            t2next_w = t2next_w - act_dt
+        ELSE
+            ! delta time from cfl bigger than time to next write
+            writestep = .TRUE.
+            act_dt = t2next_w
+            t2next_w = dt
+        END IF
+        ! update time
+        t_curr = t_curr + act_dt
+        CALL CPU_TIME(cpu_time_begin)
+
+        ! perform some veeeeeeeery difficult computation
+        ! CALL SLEEP(2)
+        ! TODO
 
 
+
+
+
+        IF (wr == 1 .and. writestep ) THEN
+            i_step = i_step + 1
+            CALL write_vtk(w0,dirname,outname,i_step)
+        END IF
+
+        CALL CPU_TIME(cpu_time_end)
+
+        WRITE(*,111) "t: ", t_curr, "Execution time: ", cpu_time_end - cpu_time_begin, "sec"
+
+    END DO
 
 
     DEALLOCATE(w0)
 
     PRINT*,"End of computation!"
+
+111 FORMAT(1X, A3, 1X, ES13.3, 1X, A16, ES13.3, 1X, A3)
 
 
 CONTAINS
