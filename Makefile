@@ -2,7 +2,7 @@
 FC = gfortran
 # FLAGS =  -O3 -g -fno-automatic  -fbounds-check  -ffpe trap=invalid,zero,overflow  -ggdb3
 FLFLAGS = ../VTKFortran/static/libvtkfortran.a
-FCFLAGS = -g -Wall -Wextra -Wconversion -Og -pedantic -fcheck=bounds -fmax-errors=5
+FCFLAGS = -Wall -Wextra -Wconversion -g -pedantic -fcheck=bounds -fmax-errors=5 -fopenmp -O2
 
 IMOD_LIB = -I../VTKFortran/static/mod
 IOBJ_LIB = -I../VTKFortran/static/obj
@@ -64,3 +64,4 @@ $(PRG_OBJ) : $(MOD_OBJS)
 # Module dependencies (manual)
 $(OBJ_DIR)/mod_thermodynamics.o: $(OBJ_DIR)/mod_constants.o
 $(OBJ_DIR)/mod_write_vtk.o: $(OBJ_DIR)/mod_thermodynamics.o $(OBJ_DIR)/mod_constants.o
+$(OBJ_DIR)/mod_euler_flux_jacobian.o: $(OBJ_DIR)/mod_thermodynamics.o $(OBJ_DIR)/mod_constants.o

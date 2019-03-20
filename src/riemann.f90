@@ -1,5 +1,6 @@
 PROGRAM riemann
 
+    USE mod_euler_flux_jacobian
     USE mod_constants
     USE mod_thermodynamics
 
@@ -24,6 +25,7 @@ PROGRAM riemann
 
     ! simulation variables
     REAL(dp_kind), ALLOCATABLE, DIMENSION(:,:,:) :: w0   ! matrix containing all variables
+    REAL(dp_kind) :: lambda_x, lambda_Y             ! maximum eigenvalue for F and G
 
     ! time related variables
     REAL(dp_kind) :: t_curr                         ! current time
@@ -129,8 +131,8 @@ PROGRAM riemann
     ! write conservative variables
     CALL conservatives(w0)
 
-    ! compute pseudo-Schlieren of rho
-    CALL pseudoschlieren(w0)
+    ! compute auxiliary variables (internal energy, speed of sound, schieren
+    CALL auxiliaries(w0)
 
     ! write first output file
     IF (wr == 1) THEN
@@ -144,10 +146,11 @@ PROGRAM riemann
 
     DO WHILE (t_curr <= t_final)
 
-        ! simulate CFL computation
-        !! TODO
-        CALL RANDOM_NUMBER(dt_cfl)
-        dt_cfl = dt_cfl *2.0d-2
+        ! CFL computation
+        lambda_x = max_eig(w0(:,:,i_u),w0(:,:,i_c))
+        lambda_y = max_eig(w0(:,:,i_v),w0(:,:,i_c))
+
+        dt_cfl = -1.0
 
         IF (dt_cfl < t2next_w) THEN
             ! delta time from CFL smaller than time to next write

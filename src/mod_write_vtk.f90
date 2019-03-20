@@ -57,6 +57,8 @@ CONTAINS
         ! internal energy
         rstat = a_vtk_file%xml_writer%write_dataarray(data_name='int energy', x=act_w(:,:,i_e), one_component=.true.)
         ! pseudo schlieren
+        rstat = a_vtk_file%xml_writer%write_dataarray(data_name='sound speed', x=act_w(:,:,i_c), one_component=.true.)
+        ! pseudo schlieren
         rstat = a_vtk_file%xml_writer%write_dataarray(data_name='schlieren', x=act_w(:,:,i_schl), one_component=.true.)
 
         rstat = a_vtk_file%xml_writer%write_dataarray(location='cell', action='close')

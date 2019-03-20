@@ -22,11 +22,12 @@ MODULE mod_constants
     INTEGER(sh_kind), PARAMETER :: i_my    =  6  ! y momentum
     INTEGER(sh_kind), PARAMETER :: i_eT    =  7  ! total energy
     INTEGER(sh_kind), PARAMETER :: i_e     =  8  ! internal energy
-    INTEGER(sh_kind), PARAMETER :: i_schl  =  9
+    INTEGER(sh_kind), PARAMETER :: i_c     =  9  ! sound speed
+    INTEGER(sh_kind), PARAMETER :: i_schl  =  10
     !    INTEGER(kind=4), PARAMETER :: i_e    = 1
 
     ! number of variables
-    INTEGER(sh_kind), PARAMETER :: nvar      = 9
+    INTEGER(sh_kind), PARAMETER :: nvar      = 10
 
     ! geometric values
     INTEGER :: num_cells,half_cells  ! number of cells per side: total num (n x n)
