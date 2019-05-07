@@ -65,3 +65,6 @@ $(PRG_OBJ) : $(MOD_OBJS)
 $(OBJ_DIR)/mod_thermodynamics.o: $(OBJ_DIR)/mod_constants.o
 $(OBJ_DIR)/mod_write_vtk.o: $(OBJ_DIR)/mod_thermodynamics.o $(OBJ_DIR)/mod_constants.o
 $(OBJ_DIR)/mod_euler_flux_jacobian.o: $(OBJ_DIR)/mod_thermodynamics.o $(OBJ_DIR)/mod_constants.o
+$(OBJ_DIR)/mod_numerical_fluxes.o: $(OBJ_DIR)/mod_euler_flux_jacobian.o $(OBJ_DIR)/mod_constants.o $(OBJ_DIR)/mod_exact_riemann.o
+$(OBJ_DIR)/mod_exact_riemann.o: $(OBJ_DIR)/mod_euler_flux_jacobian.o $(OBJ_DIR)/mod_thermodynamics.o
+

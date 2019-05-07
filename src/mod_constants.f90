@@ -26,6 +26,9 @@ MODULE mod_constants
     INTEGER(sh_kind), PARAMETER :: i_schl  =  10
     !    INTEGER(kind=4), PARAMETER :: i_e    = 1
 
+    ! indexes of conservative variables
+    INTEGER(sh_kind), PARAMETER, DIMENSION(4) :: i_cons = (/i_rho, i_mx, i_my, i_eT/)
+
     ! number of variables
     INTEGER(sh_kind), PARAMETER :: nvar      = 10
 

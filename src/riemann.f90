@@ -3,6 +3,7 @@ PROGRAM riemann
     USE mod_euler_flux_jacobian
     USE mod_constants
     USE mod_thermodynamics
+    USE mod_numerical_fluxes
 
     USE mod_write_vtk
 
@@ -13,7 +14,7 @@ PROGRAM riemann
     LOGICAL :: test                                 ! general test variable
     CHARACTER(len=32) :: arg                        ! command line argument
     INTEGER :: count                                ! number of CL arguments
-    INTEGER, PARAMETER :: n_params = 10             ! number of params in config file
+    INTEGER, PARAMETER :: n_params = 11             ! number of params in config file
     LOGICAL, DIMENSION(n_params) :: is_parsed = .FALSE.    ! check if every param has been parsed
 
     ! simulation parameters to be parsed in the config file
@@ -23,9 +24,14 @@ PROGRAM riemann
     INTEGER(sh_kind) :: wr                           ! write data to vtk file
     CHARACTER(len=24) :: dirname, outname           ! folder and file where to write results
 
+    REAL(dp_kind) :: CFL                            ! CFL
+
     ! simulation variables
     REAL(dp_kind), ALLOCATABLE, DIMENSION(:,:,:) :: w0   ! matrix containing all variables
     REAL(dp_kind) :: lambda_x, lambda_Y             ! maximum eigenvalue for F and G
+
+    REAL(dp_kind), ALLOCATABLE, DIMENSION(:,:,:) :: F,G  ! flux matrices
+
 
     ! time related variables
     REAL(dp_kind) :: t_curr                         ! current time
@@ -35,6 +41,7 @@ PROGRAM riemann
     REAL cpu_time_begin, cpu_time_end               ! time elapsed in computations
     LOGICAL :: writestep                            ! write solution file at current step
     INTEGER :: i_step = 0                           ! count step
+
 
     ! start parsing input file
     count = command_argument_count()
@@ -83,6 +90,13 @@ PROGRAM riemann
 
     ! allocate memory for solution
     ALLOCATE (w0(num_cells,num_cells,nvar),STAT=istat)
+
+    ALLOCATE (F(0:num_cells,1:num_cells,4),STAT=istat)
+    ALLOCATE (G(1:num_cells,0:num_cells,4),STAT=istat)
+
+    F = 0.0d0;
+    G = 0.0d0;
+
     IF (istat /= 0) THEN
         PRINT*, "Failed to allocate variables"
         PRINT*, "Error code: ", istat
@@ -131,7 +145,7 @@ PROGRAM riemann
     ! write conservative variables
     CALL conservatives(w0)
 
-    ! compute auxiliary variables (internal energy, speed of sound, schieren
+    ! compute auxiliary variables (internal energy, speed of sound, schieren)
     CALL auxiliaries(w0)
 
     ! write first output file
@@ -150,7 +164,8 @@ PROGRAM riemann
         lambda_x = max_eig(w0(:,:,i_u),w0(:,:,i_c))
         lambda_y = max_eig(w0(:,:,i_v),w0(:,:,i_c))
 
-        dt_cfl = -1.0
+        dt_cfl = CFL*(Dx/lambda_x+Dy/lambda_y)
+        !dt_cfl = CFL*min(Dx/lambda_x,Dy/lambda_y)
 
         IF (dt_cfl < t2next_w) THEN
             ! delta time from CFL smaller than time to next write
@@ -167,13 +182,35 @@ PROGRAM riemann
         t_curr = t_curr + act_dt
         CALL CPU_TIME(cpu_time_begin)
 
-        ! perform some veeeeeeeery difficult computation
-        ! CALL SLEEP(2)
-        ! TODO
+        ! compute fluxes
+        ! Godunov split
+        CALL godunov_flux_x(w0,F)
+
+        w0(:,:,i_cons) = w0(:,:,i_cons) - dt_cfl/Dx*(F(1:num_cells,:,:)-F(0:num_cells-1,:,:))
+
+        CALL godunov_flux_y(w0,G)
+
+        w0(:,:,i_cons) = w0(:,:,i_cons) - dt_cfl/Dy*(G(:,1:num_cells,:)-G(:,0:num_cells-1,:))
+
+        !! Strang split
+        !call godunov_flux(w0,F,x)
+        !
+        !w0 = w0 - dt_cfl/(2.0*dx)*(F(1:num_cells,:)-F(0:num_cells-1,:))
+        !
+        !call godunov_flux(w0,G,y)
+        !
+        !w0 = w0 - dt_cfl/dy*(G(:,1:num_cells)-G(:,0:num_cells-1))
+        !
+        !call godunov_flux(w0,F,x)
+        !
+        !w0 = w0 - dt_cfl/(2.0*dx)*(F(1:num_cells,:)-F(0:num_cells-1,:))
 
 
+        ! implementazione di controlli Et > Ec rho > 0
 
+        CALL primitives(w0)
 
+        CALL auxiliaries(w0)
 
         IF (wr == 1 .and. writestep ) THEN
             i_step = i_step + 1
@@ -316,6 +353,14 @@ CONTAINS
                         IF (ios==0) THEN
                             WRITE(*, 104) 'Read output filename:', outname
                             is_parsed(10) = .TRUE.
+                        ELSE
+                            PRINT *, 'Error parsing output filename'
+                        END IF
+                    CASE ('CFL')
+                        READ(buffer, *, iostat=ios) CFL
+                        IF (ios==0) THEN
+                            WRITE(*, 101) 'Read CFL:', CFL
+                            is_parsed(11) = .TRUE.
                         ELSE
                             PRINT *, 'Error parsing output filename'
                         END IF
