@@ -118,7 +118,7 @@ CONTAINS
     END FUNCTION max_eig
 
 
-    SUBROUTINE flux_x(w)
+    FUNCTION flux_x(w) RESULT (f)
 
         IMPLICIT NONE
 
@@ -137,10 +137,10 @@ CONTAINS
         f(4) = (w(4) + P) * u
 
 
-    END SUBROUTINE flux_x
+    END FUNCTION flux_x
 
 
-    SUBROUTINE flux_y(w)
+    FUNCTION flux_y(w) RESULT (f)
         IMPLICIT NONE
 
 
@@ -158,7 +158,7 @@ CONTAINS
         f(3) = w(3)*v + P
         f(4) = (w(4) + P) * v
 
-    END SUBROUTINE flux_y
+    END FUNCTION flux_y
 
 
     FUNCTION Pgreco(w) RESULT(P)

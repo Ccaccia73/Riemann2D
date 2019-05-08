@@ -1,40 +1,9 @@
 MODULE mod_exact_riemann
 
     USE mod_euler_flux_jacobian
-
     USE mod_thermodynamics
 
-
-    INTERFACE rarefaction_density
-
-        MODULE PROCEDURE rarefaction_density_s, rarefaction_density_v
-
-    END INTERFACE rarefaction_density
-
-    PRIVATE rarefaction_density_s, rarefaction_density_v
-
-
-    INTERFACE rarefaction_velocity
-
-        MODULE PROCEDURE rarefaction_velocity_s, rarefaction_velocity_v
-
-    END INTERFACE rarefaction_velocity
-
-    PRIVATE rarefaction_velocity_s, rarefaction_velocity_v
-
-
-    INTERFACE rarefaction_pressure
-
-        MODULE PROCEDURE rarefaction_pressure_s, rarefaction_pressure_v
-
-    END INTERFACE rarefaction_pressure
-
-    PRIVATE rarefaction_pressure_s, rarefaction_pressure_v
-
-
-
 CONTAINS
-
 
     SUBROUTINE exact_riemann (wl, wr,  wCl, wCr, xdir)
 
@@ -58,13 +27,14 @@ CONTAINS
 
         REAL(dp_kind) :: nu,  nu_vacuum,  &
             rhol, vl, ml, ul, el, cl, &
-            U2r, U2l, &
             rhor, vr, mr, ur, er, cr, &
+            U2r, U2l, &
+            trasv_ul, trasv_ur, &
             u1, v1, P1, Dv1, &
             u2, v2, P2, Dv2, &
             a11, a21, a12, a22, rhs1, rhs2, det
 
-        REAL(KIND=8), PARAMETER :: rel_tol = 1.0d-10
+        REAL(dp_kind), PARAMETER :: rel_tol = 1.0d-10
         INTEGER, PARAMETER :: nmax = 1000
 
         INTEGER :: n
@@ -77,10 +47,13 @@ CONTAINS
         IF ( xdir) THEN
             ml = wl(2)
             mr = wr(2)
+            trasv_ul = wl(3)*vl
+            trasv_ur = wr(3)*vr
         ELSE
             ml = wl(3)
             mr = wr(3)
-
+            trasv_ul = wl(2)*vl
+            trasv_ur = wr(2)*vr
         END IF
 
         ul = ml * vl
@@ -94,8 +67,8 @@ CONTAINS
 
         ! modulo della velocità al quadrato
 
-        U2r = (wr(2)/wr(1))**2 + (wr(3)/wr(1))**2
-        U2l = (wl(2)/wl(1))**2 + (wl(3)/wl(1))**2
+        U2l = ul**2 + trasv_ul**2
+        U2r = ur**2 + trasv_ur**2
 
         el = wl(4) / rhol  -  U2l**2 / 2;   cl = sound_speed(el, rhol)
         er = wr(4) / rhor  -  U2r**2 / 2;   cr = sound_speed(er, rhor)
@@ -139,7 +112,7 @@ CONTAINS
 
             ENDIF
 
-            CALL loci_rar_RH (1, wl, v1,  P1, u1, a11, a21)
+            CALL loci_rar_RH (1, wl, v1,  P1, u1, a11, a21, xdir)
 
             IF (v2 < ((gamma-1)/(gamma+1)) * vr) THEN
 
@@ -153,7 +126,7 @@ CONTAINS
 
             ENDIF
 
-            CALL loci_rar_RH (3, wr, v2,  P2, u2, a12, a22)
+            CALL loci_rar_RH (3, wr, v2,  P2, u2, a12, a22, xdir)
 
             ! devo cambiare il segno di a11 e a22
             a12 = -a12;   a22 = -a22
@@ -175,14 +148,20 @@ CONTAINS
 
                 wCl(1) = 1/v1;     wCr(1) = 1/v2
 
-                CALL loci_rar_RH(1, wl, v1,  P1, u1, a11, a21)
+                CALL loci_rar_RH(1, wl, v1,  P1, u1, a11, a21, xdir)
                     ! non servono a11 e a21
 
-                wCl(2) = u1/v1;    wCr(2) = u1/v2  ! u2 == u1
+                IF ( xdir ) THEN
+                    wCl(2) = u1/v1;    wCr(2) = u1/v2  ! u2 == u1
+                    wCl(3) = trasv_ul/v1;    wCR(3) =  trasv_ur/v2
+                ELSE
+                    wCl(2) = trasv_ul/v1;    wCR(2) =  trasv_ur/v2
+                    wCl(3) = u1/v1;    wCr(3) = u1/v2  ! u2 == u1
+                END IF
 
-                wCl(3) = (specific_energy(P1, 1/v1)  +  u1**2/2) / v1 ! controllare se e(P, v) o e(P, rho)
+                wCl(4) = (specific_energy(P1, 1/v1)  +  (u1**2 + trasv_ul**2)/2) / v1 ! controllare se e(P, v) o e(P, rho)
+                wCr(4) = (specific_energy(P1, 1/v2)  +  (u1**2 + trasv_ur**2)/2) / v2 ! P1 == P2
 
-                wCr(3) = (specific_energy(P1, 1/v2)  +  u1**2/2) / v2 ! P1 == P2
 
                 WRITE(*,*) 'metodo di Newton converge in', n, 'iterazioni'
                 WRITE(*,*)
@@ -201,16 +180,17 @@ CONTAINS
     END SUBROUTINE exact_riemann
 
 
-    SUBROUTINE loci_rar_RH (i, w_, v,  P, u, dP_dv, du_dv)
+    SUBROUTINE loci_rar_RH (i, w_, v,  P, u, dP_dv, du_dv, xdir)
 
         IMPLICIT NONE
 
-        INTEGER,                    INTENT(IN) :: i
-        REAL(KIND=8), DIMENSION(:), INTENT(IN) :: w_  ! stato pivot
-        REAL(KIND=8),               INTENT(IN) :: v ! var indipendente
-        REAL(KIND=8),               INTENT(OUT) :: P, u, dP_dv, du_dv
+        INTEGER,                     INTENT(IN) :: i
+        REAL(dp_kind), DIMENSION(:), INTENT(IN) :: w_  ! stato pivot
+        REAL(dp_kind),               INTENT(IN) :: v ! var indipendente
+        REAL(dp_kind),               INTENT(OUT) :: P, u, dP_dv, du_dv
+        LOGICAL,                     INTENT(IN) :: xdir
 
-        REAL(KIND=8) :: s, v_, u_, P_, DP, Dv, S_DD
+        REAL(dp_kind) :: s, v_, u_, P_, DP, Dv, S_DD
 
         SELECT CASE (i)
 
@@ -230,7 +210,12 @@ CONTAINS
         ! di volume specifico e pressione
 
         v_ = 1/w_(1)
-        u_ = w_(2)/w_(1)
+
+        IF ( xdir ) THEN
+            u_ = w_(2) * v_
+        ELSE
+            u_ = w_(3) * v_
+        END IF
 
         P_ = Pgreco(w_)
 
@@ -264,284 +249,54 @@ CONTAINS
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-    FUNCTION rarefaction_density_s(i, w_, csi) RESULT(rho)
-
-        IMPLICIT NONE
-
-        INTEGER,                    INTENT(IN) :: i
-        REAL(KIND=8), DIMENSION(:), INTENT(IN) :: w_
-        REAL(KIND=8),               INTENT(IN) :: csi
-        REAL(KIND=8) ::rho
-
-        REAL(KIND=8), DIMENSION(SIZE(w_)) :: prim_, lambda_
-        REAL(KIND=8) :: s, rho_, P_, c_, csi_
-
-        SELECT CASE (i)
-
-            CASE(1);  s = -1
-
-            CASE(3);  s = 1
-
-            CASE DEFAULT
-
-                WRITE(*,*) 'i deve essere 1 o 3 in loci_rar_RH'
-                WRITE(*,*) 'STOP'
-                STOP
-
-        END SELECT
-
-        prim_= primitive(w_)
-
-        rho_ = prim_(1)
-        P_   = prim_(3)
-
-        c_ = sound_speed(specific_energy(P_, rho_), rho_)
-
-        lambda_ = eigenvalues(w_)
-
-        csi_ = lambda_(i)
-
-        rho = rho_ * (1 + s *((gamma - 1)/(gamma + 1)) * (csi - csi_)/c_)**(2/(gamma-1))
-
-    END FUNCTION rarefaction_density_s
-
-
-
-    FUNCTION rarefaction_density_v(i, w_, csi) RESULT(rho)
-
-        IMPLICIT NONE
-
-        INTEGER,                    INTENT(IN) :: i
-        REAL(KIND=8), DIMENSION(:), INTENT(IN) :: w_
-        REAL(KIND=8), DIMENSION(:), INTENT(IN) :: csi
-        REAL(KIND=8), DIMENSION(SIZE(csi)) :: rho
-
-        REAL(KIND=8), DIMENSION(SIZE(w_)) :: prim_, lambda_
-        REAL(KIND=8) :: s, rho_, P_, c_, csi_
-
-        SELECT CASE (i)
-
-            CASE(1);  s = -1
-
-            CASE(3);  s = 1
-
-            CASE DEFAULT
-
-                WRITE(*,*) 'i deve essere 1 o 3 in loci_rar_RH'
-                WRITE(*,*) 'STOP'
-                STOP
-
-        END SELECT
-
-        prim_= primitive(w_)
-
-        rho_ = prim_(1)
-        P_   = prim_(3)
-
-        c_ = sound_speed(specific_energy(P_, rho_), rho_)
-
-        lambda_ = eigenvalues(w_)
-
-        csi_ = lambda_(i)
-
-        rho = rho_ * (1 + s *((gamma - 1)/(gamma + 1)) * (csi - csi_)/c_)**(2/(gamma-1))
-
-    END FUNCTION rarefaction_density_v
-
-
-
-
-    FUNCTION rarefaction_velocity_s(i, w_, csi) RESULT(u)
-
-        IMPLICIT NONE
-
-        INTEGER,      INTENT(IN) :: i
-        REAL(KIND=8), DIMENSION(:), INTENT(IN) :: w_
-        REAL(KIND=8),               INTENT(IN) :: csi
-        REAL(KIND=8) :: u
-
-        REAL(KIND=8), DIMENSION(SIZE(w_)) :: prim_, lambda_
-        REAL(KIND=8) :: u_, csi_
-
-        SELECT CASE (i)
-
-            CASE(1)
-
-            CASE(3)
-
-            CASE DEFAULT
-
-                WRITE(*,*) 'i deve essere 1 o 3 in loci_rar_RH'
-                WRITE(*,*) 'STOP'
-                STOP
-
-        END SELECT
-
-        prim_= primitive(w_)
-
-        u_ = prim_(2)
-
-        lambda_ = eigenvalues(w_)
-
-        csi_ = lambda_(i)
-
-        u = u_  +  (2/(gamma + 1)) * (csi - csi_)
-
-    END FUNCTION rarefaction_velocity_s
-
-
-    FUNCTION rarefaction_velocity_v(i, w_, csi) RESULT(u)
-
-        IMPLICIT NONE
-
-        INTEGER,      INTENT(IN) :: i
-        REAL(KIND=8), DIMENSION(:), INTENT(IN) :: w_
-        REAL(KIND=8), DIMENSION(:), INTENT(IN) :: csi
-        REAL(KIND=8), DIMENSION(SIZE(csi)) :: u
-
-        REAL(KIND=8), DIMENSION(SIZE(w_)) :: prim_, lambda_
-        REAL(KIND=8) :: u_, csi_
-
-        SELECT CASE (i)
-
-            CASE(1)
-
-            CASE(3)
-
-            CASE DEFAULT
-
-                WRITE(*,*) 'i deve essere 1 o 3 in loci_rar_RH'
-                WRITE(*,*) 'STOP'
-                STOP
-
-        END SELECT
-
-        prim_= primitive(w_)
-
-        u_ = prim_(2)
-
-        lambda_ = eigenvalues(w_)
-
-        csi_ = lambda_(i)
-
-        u = u_  +  (2/(gamma + 1)) * (csi - csi_)
-
-    END FUNCTION rarefaction_velocity_v
-
-
-    FUNCTION rarefaction_pressure_s(i, w_, csi) RESULT(P)
-
-        IMPLICIT NONE
-
-        INTEGER,      INTENT(IN) :: i
-        REAL(KIND=8), DIMENSION(:), INTENT(IN) :: w_
-        REAL(KIND=8),               INTENT(IN) :: csi
-        REAL(KIND=8) :: P
-
-        REAL(KIND=8), DIMENSION(SIZE(w_)) :: prim_
-        REAL(KIND=8) :: rho_, P_, rho
-
-        SELECT CASE (i)
-
-            CASE(1)
-
-            CASE(3)
-
-            CASE DEFAULT
-
-                WRITE(*,*) 'i deve essere 1 o 3 in rarefaction_pressure_s'
-                WRITE(*,*) 'STOP'
-                STOP
-
-        END SELECT
-
-        rho_ = w_(1)
-
-        prim_= primitive(w_)
-
-        P_ = prim_(3)
-
-        rho = rarefaction_density(i, w_, csi)
-
-        P = P_ * (rho/rho_)**gamma
-
-    END FUNCTION rarefaction_pressure_s
-
-
-    FUNCTION rarefaction_pressure_v(i, w_, csi) RESULT(P)
-
-        IMPLICIT NONE
-
-        INTEGER,      INTENT(IN) :: i
-        REAL(KIND=8), DIMENSION(:), INTENT(IN) :: w_
-        REAL(KIND=8), DIMENSION(:), INTENT(IN) :: csi
-        REAL(KIND=8), DIMENSION(SIZE(csi)) :: P
-
-        REAL(KIND=8), DIMENSION(SIZE(csi)) :: rho
-        REAL(KIND=8), DIMENSION(SIZE(w_)) :: prim_
-        REAL(KIND=8) :: rho_, P_
-
-        SELECT CASE (i)
-
-            CASE(1)
-
-            CASE(3)
-
-            CASE DEFAULT
-
-                WRITE(*,*) 'i deve essere 1 o 3 in rarefaction_pressure_v'
-                WRITE(*,*) 'STOP'
-                STOP
-
-        END SELECT
-
-        rho_ = w_(1)
-
-        prim_= primitive(w_)
-
-        P_ = prim_(3)
-
-        rho = rarefaction_density(i, w_, csi)
-
-        P = P_ * (rho/rho_)**gamma
-
-    END FUNCTION rarefaction_pressure_v
 
 
     !================================================================
 
-    FUNCTION ws_sonic_state(i, w) RESULT(ws)
+    FUNCTION ws_sonic_state(i, w, xdir) RESULT(ws)
 
         ! Sonic values of the rarefaction wave
         ! similarity solution at xi = 0
 
         IMPLICIT NONE
 
-        INTEGER,                    INTENT(IN)  :: i
-        REAL(KIND=8), DIMENSION(:), INTENT(IN)  :: w
-        REAL(KIND=8), DIMENSION(SIZE(w)) :: ws
+        INTEGER,                     INTENT(IN)  :: i
+        REAL(dp_kind), DIMENSION(:), INTENT(IN)  :: w
+        LOGICAL,                     INTENT(IN)  :: xdir
 
-        REAL(KIND=8) :: s,  rho, u, e, P, c, lambda,  &
+        REAL(dp_kind), DIMENSION(SIZE(w)) :: ws
+
+        REAL(KIND=8) :: s,  rho, u, trasv_u, e, P, c, lambda,  &
             rhos, us, Ets, Ps
 
 
         SELECT CASE(i)
 
             CASE(1);  s = -1
-            CASE(3);  s = 1
+            CASE(4);  s = 1
 
             CASE DEFAULT
 
                 WRITE (*,*) 'In FUNCTION ws_sonic_state, i'
-                WRITE (*,*) 'must be either 1 or 3.  STOP.'
+                WRITE (*,*) 'must be either 1 or 4.  STOP.'
                 STOP
 
         END SELECT
 
 
-        rho = w(1);   u = w(2)/w(1)
+        rho = w(1)
 
-        e = w(3)/w(1) - u**2/2
+        IF ( xdir ) THEN
+           u = w(2)/rho
+           trasv_u = w(3)/rho
+        ELSE
+           u = w(3)/rho
+           trasv_u = w(2)/rho
+        END IF
+
+
+
+        e = w(4)/w(1) - (u**2 + trasv_u**2)/2
 
         P = Pgreco(w)
 
@@ -555,9 +310,15 @@ CONTAINS
 
         Ps = P * (rhos/rho)**gamma
 
-        Ets = rhos * (specific_energy(Ps, rhos)  +  us**2/2)
+        Ets = rhos * (specific_energy(Ps, rhos)  +  (us**2 + trasv_u**2)/2)
 
-        ws = [rhos, rhos*us, Ets]
+
+        IF ( xdir ) THEN
+            ws = [rhos, rhos*us, rhos*trasv_u, Ets]
+        ELSE
+            ws = [rhos, rhos*trasv_u, rhos*us, Ets]
+        END IF
+
 
     END FUNCTION ws_sonic_state
 

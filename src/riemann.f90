@@ -185,11 +185,9 @@ PROGRAM riemann
         ! compute fluxes
         ! Godunov split
         CALL godunov_flux_x(w0,F)
-
-        w0(:,:,i_cons) = w0(:,:,i_cons) - dt_cfl/Dx*(F(1:num_cells,:,:)-F(0:num_cells-1,:,:))
-
         CALL godunov_flux_y(w0,G)
 
+        w0(:,:,i_cons) = w0(:,:,i_cons) - dt_cfl/Dx*(F(1:num_cells,:,:)-F(0:num_cells-1,:,:))
         w0(:,:,i_cons) = w0(:,:,i_cons) - dt_cfl/Dy*(G(:,1:num_cells,:)-G(:,0:num_cells-1,:))
 
         !! Strang split
