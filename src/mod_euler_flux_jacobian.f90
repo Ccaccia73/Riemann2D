@@ -5,7 +5,6 @@ MODULE mod_euler_flux_jacobian
 
     IMPLICIT NONE
 
-
 CONTAINS
 
     SUBROUTINE conservatives(w)
@@ -24,7 +23,7 @@ CONTAINS
         w(:,:,i_e) = specific_energy(w(:,:,i_P),w(:,:,i_rho))
 
         ! eT = rho*(e + 0.5*(u**2 + v**2) )
-        w(:,:,i_eT) = w(:,:,i_rho)*( w(:,:,i_e) + 0.5d0 * ( w(:,:,i_u)**2 + w(:,:,i_v)**2 ) )
+        w(:,:,i_eT) = w(:,:,i_rho)*( w(:,:,i_e) + HALF * ( w(:,:,i_u)**2 + w(:,:,i_v)**2 ) )
 
     END SUBROUTINE conservatives
 
@@ -42,7 +41,7 @@ CONTAINS
         w(:,:,i_v) = w(:,:,i_my)*w(:,:,i_rho)
 
         ! specific internal energy
-        w(:,:,i_e) = specific_energy(w(:,:,i_P),w(:,:,i_rho))
+        w(:,:,i_e) = w(:,:,i_eT)/w(:,:,i_rho) - HALF * ( w(:,:,i_u)**2 + w(:,:,i_v)**2 )
 
         ! Pressure
         w(:,:,i_P) = pressure(w(:,:,i_e),w(:,:,i_rho))
@@ -177,6 +176,7 @@ CONTAINS
         P = pressure(e, rho)
 
     END FUNCTION Pgreco
+
 
     FUNCTION eigenvalues(w, xdir) RESULT (lambda) !vettore degli autovalori   ordinati in modo crescente
 

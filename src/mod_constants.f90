@@ -39,6 +39,7 @@ MODULE mod_constants
 
     REAL(dp_kind), ALLOCATABLE, DIMENSION(:,:,:) :: x,y,z
 
-
+    REAL(dp_kind) :: HALF = 0.5d0
+    REAL(dp_kind) :: ONE = 1.0d0
 
 END MODULE mod_constants
