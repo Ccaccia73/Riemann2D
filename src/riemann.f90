@@ -91,8 +91,8 @@ PROGRAM riemann
     ! allocate memory for solution
     ALLOCATE (w0(num_cells,num_cells,nvar),STAT=istat)
 
-    ALLOCATE (F(0:num_cells,1:num_cells,4),STAT=istat)
-    ALLOCATE (G(1:num_cells,0:num_cells,4),STAT=istat)
+    ALLOCATE (F(1:num_cells+1,1:num_cells,4),STAT=istat)
+    ALLOCATE (G(1:num_cells,1:num_cells+1,4),STAT=istat)
 
     F = 0.0d0;
     G = 0.0d0;
@@ -190,13 +190,13 @@ PROGRAM riemann
         call HLLC_flux_x(w0,F)
         call HLLC_flux_y(w0,G)
 
-        w0(:,:,i_cons) = w0(:,:,i_cons) - act_dt/Dx*(F(1:num_cells,:,:)-F(0:num_cells-1,:,:))
+        w0(:,:,i_cons) = w0(:,:,i_cons) - act_dt/Dx*(F(2:num_cells+1,:,:)-F(1:num_cells,:,:))
 
         ! CALL primitives(w0)
         ! CALL auxiliaries(w0)
 
 
-        w0(:,:,i_cons) = w0(:,:,i_cons) - act_dt/Dy*(G(:,1:num_cells,:)-G(:,0:num_cells-1,:))
+        w0(:,:,i_cons) = w0(:,:,i_cons) - act_dt/Dy*(G(:,2:num_cells+1,:)-G(:,1:num_cells,:))
 
         !! Strang split
         !call godunov_flux(w0,F,x)
