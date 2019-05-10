@@ -38,7 +38,7 @@ CONTAINS
         ! u
         w(:,:,i_u) = w(:,:,i_mx)/w(:,:,i_rho)
         ! v
-        w(:,:,i_v) = w(:,:,i_my)*w(:,:,i_rho)
+        w(:,:,i_v) = w(:,:,i_my)/w(:,:,i_rho)
 
         ! specific internal energy
         w(:,:,i_e) = w(:,:,i_eT)/w(:,:,i_rho) - HALF * ( w(:,:,i_u)**2 + w(:,:,i_v)**2 )

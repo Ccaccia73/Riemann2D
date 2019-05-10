@@ -249,6 +249,19 @@ CONTAINS
     END SUBROUTINE godunov_flux_y
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
     SUBROUTINE HLLC_flux_x(w,F)
         ! HLLC numerical flux according to Toro 10.6 pagg. 331-332
 
@@ -259,7 +272,7 @@ CONTAINS
 
         REAL(dp_kind), DIMENSION(SIZE(w,1)-1,SIZE(w,2)) :: p_star, p_pvrs, rho_bar, c_bar, q_l, q_r, S_l, S_r, S_star
 
-        REAL(dp_kind), DIMENSION(4) :: w_star_k
+        REAL(dp_kind), DIMENSION(4) :: w_star_k, tmp_wl, tmp_wr
 
         INTEGER :: r_min, r_max, l_min, l_max
 
@@ -316,9 +329,22 @@ CONTAINS
 
         DO j = 1, SIZE(w,2)
             DO i = 1, SIZE(w,1) - 1
+
+                ! if states are equal we skip computation
+                ! recuperiamo lo stato sinistro wl e lo stato destro wr
+                tmp_wl = w(i,j,i_cons)
+                tmp_wr = w(i+1,j,i_cons)
+
+                ! controlliamo che ci sia salto
+                IF (SQRT(SUM((tmp_wr - tmp_wl)**2))  <  SQRT(SUM((tmp_wl + tmp_wr)**2)) * rel_tol) THEN
+                    F(i+1,j,:) = flux_x(w(i,j,i_cons))
+                    CYCLE
+                ENDIF
+
+                ! compute HLLC flux according to wave speed values
                 IF (S_l(i,j) >= 0.0 ) THEN
                     F(i+1,j,:) = flux_x(w(i,j,i_cons)) ! FL
-                ELSEIF ( S_star(i,j) >= 0.0 ) THEN
+                ELSEIF ( S_star(i,j) >= 0.0 .AND. S_l(i,j) < 0.0 ) THEN
                     ! inizializzo le var note di w_star_k (U_star_k nel testo)
                     w_star_k(1) = ONE
                     w_star_k(2) = S_star(i,j)
@@ -330,9 +356,9 @@ CONTAINS
                     w_star_k = w_star_k*w(i,j,i_rho)*( (S_l(i,j) - w(i,j,i_u) ) / ( S_l(i,j) - S_star(i,j)  )   )
 
                     F(i+1,j,:) = flux_x(w(i,j,i_cons)) + S_l(i,j)*(w_star_k - w(i,j,i_cons))  ! F_star_L
-                ELSEIF ( S_r(i,j ) <= 0.0 ) THEN
+                ELSEIF ( S_r(i,j ) < 0.0 ) THEN
                     F(i+1,j,:) = flux_x(w(i+1,j,i_cons)) ! FR
-                ELSE
+                ELSEIF ( S_r(i,j) >= 0.0 .AND. S_star(i,j) < 0.0 ) THEN
                     ! inizializzo le var note di w_star_k (U_star_k nel testo)
                     w_star_k(1) = ONE
                     w_star_k(2) = S_star(i,j)
@@ -344,6 +370,17 @@ CONTAINS
                     w_star_k = w_star_k*w(i+1,j,i_rho)*( (S_r(i,j) - w(i+1,j,i_u) ) / ( S_r(i,j) - S_star(i,j)  )   )
 
                     F(i+1,j,:) = flux_x(w(i+1,j,i_cons)) + S_r(i,j)*(w_star_k - w(i+1,j,i_cons))  ! F_star_L
+                ELSE
+                    WRITE(*,*) 'No suitable condition found for HLLC x at ', i,j
+                    WRITE(*,*) 'S_L:', S_l(i,j), 'S*:', S_star(i,j), 'S_R:', S_r(i,j)
+                    WRITE(*,*) 'q_l:', q_l(i,j), 'q_r:',q_r(i,j)
+                    WRITE(*,*) 'u_l:', w(i,j,i_u), 'u_r:',w(i+1,j,i_u)
+                    WRITE(*,*) 'c_l:', w(i,j,i_c), 'c_r:',w(i+1,j,i_c)
+                    WRITE(*,*) 'e_l:', w(i,j,i_e), 'e_r:',w(i+1,j,i_e)
+                    WRITE(*,*) 'eT_l:', w(i,j,i_eT), 'eT_r:',w(i+1,j,i_eT)
+                    WRITE(*,*) 'v_l:', w(i,j,i_v), 'v_r:',w(i+1,j,i_v)
+                    WRITE(*,*) 'rho_l:', w(i,j,i_rho), 'rho_r:',w(i+1,j,i_rho)
+                    STOP
                 END IF
             END DO
         END DO
@@ -364,7 +401,7 @@ CONTAINS
 
         REAL(dp_kind), DIMENSION(SIZE(w,1),SIZE(w,2)-1) :: p_star, p_pvrs, rho_bar, c_bar, q_l, q_r, S_l, S_r, S_star
 
-        REAL(dp_kind), DIMENSION(4) :: w_star_k
+        REAL(dp_kind), DIMENSION(4) :: w_star_k, tmp_wl, tmp_wr
 
         INTEGER :: r_min, r_max, l_min, l_max
 
@@ -422,9 +459,23 @@ CONTAINS
 
         DO j = 1, SIZE(w,2) - 1
             DO i = 1, SIZE(w,1)
+
+                ! if states are equal we skip computation
+                ! recuperiamo lo stato sinistro wl e lo stato destro wr
+                tmp_wl = w(i,j,i_cons)
+                tmp_wr = w(i,j+1,i_cons)
+
+                ! controlliamo che ci sia salto
+                IF (SQRT(SUM((tmp_wr - tmp_wl)**2))  <  SQRT(SUM((tmp_wl + tmp_wr)**2)) * rel_tol) THEN
+                    G(i,j+1,:) = flux_y(w(i,j,i_cons)) ! FL
+                    CYCLE
+                ENDIF
+
+
+                ! compute HLLC flux according to wave speed values
                 IF (S_l(i,j) >= 0.0 ) THEN
                     G(i,j+1,:) = flux_y(w(i,j,i_cons)) ! FL
-                ELSEIF ( S_star(i,j) >= 0.0 ) THEN
+                ELSEIF ( S_star(i,j) >= 0.0 .AND. S_l(i,j) < 0.0 ) THEN
                     ! inizializzo le var note di w_star_k (U_star_k nel testo)
                     w_star_k(1) = ONE
                     w_star_k(2) = w(i,j,i_u)
@@ -438,7 +489,7 @@ CONTAINS
                     G(i,j+1,:) = flux_y(w(i,j,i_cons)) + S_l(i,j)*(w_star_k - w(i,j,i_cons))  ! F_star_L
                 ELSEIF ( S_r(i,j ) <= 0.0 ) THEN
                     G(i,j+1,:) = flux_y(w(i,j+1,i_cons)) ! FR
-                ELSE
+                ELSEIF ( S_r(i,j) >= 0.0 .AND. S_star(i,j) < 0.0 ) THEN
                     ! inizializzo le var note di w_star_k (U_star_k nel testo)
                     w_star_k(1) = ONE
                     w_star_k(2) = w(i,j+1,i_u)
@@ -450,6 +501,9 @@ CONTAINS
                     w_star_k = w_star_k*w(i,j+1,i_rho)*( (S_r(i,j) - w(i,j+1,i_v) ) / ( S_r(i,j) - S_star(i,j)  )   )
 
                     G(i,j+1,:) = flux_y(w(i,j+1,i_cons)) + S_r(i,j)*(w_star_k - w(i,j+1,i_cons))  ! F_star_L
+                ELSE
+                    WRITE(*,*) 'No suitable condition found for HLLC y at ', i,j
+                    STOP
                 END IF
             END DO
         END DO

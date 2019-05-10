@@ -94,9 +94,6 @@ PROGRAM riemann
     ALLOCATE (F(1:num_cells+1,1:num_cells,4),STAT=istat)
     ALLOCATE (G(1:num_cells,1:num_cells+1,4),STAT=istat)
 
-    F = 0.0d0;
-    G = 0.0d0;
-
     IF (istat /= 0) THEN
         PRINT*, "Failed to allocate variables"
         PRINT*, "Error code: ", istat
@@ -188,15 +185,19 @@ PROGRAM riemann
         !CALL godunov_flux_y(w0,G)
 
         call HLLC_flux_x(w0,F)
-        call HLLC_flux_y(w0,G)
 
         w0(:,:,i_cons) = w0(:,:,i_cons) - act_dt/Dx*(F(2:num_cells+1,:,:)-F(1:num_cells,:,:))
 
-        ! CALL primitives(w0)
-        ! CALL auxiliaries(w0)
+        CALL primitives(w0)
+        CALL auxiliaries(w0)
+
+        call HLLC_flux_y(w0,G)
 
 
         w0(:,:,i_cons) = w0(:,:,i_cons) - act_dt/Dy*(G(:,2:num_cells+1,:)-G(:,1:num_cells,:))
+
+        CALL primitives(w0)
+        CALL auxiliaries(w0)
 
         !! Strang split
         !call godunov_flux(w0,F,x)
@@ -214,11 +215,9 @@ PROGRAM riemann
 
         ! implementazione di controlli Et > Ec rho > 0
 
-        CALL primitives(w0)
-
-        CALL auxiliaries(w0)
 
         IF (wr == 1 .and. writestep ) THEN
+        !IF ( .TRUE. ) THEN
             i_step = i_step + 1
             CALL write_vtk(w0,dirname,outname,i_step)
         END IF
